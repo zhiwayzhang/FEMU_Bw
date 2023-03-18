@@ -453,6 +453,8 @@ static inline struct nand_page *get_pg(struct ssd *ssd, struct ppa *ppa)
     return &(blk->pg[ppa->g.pg]);
 }
 
+// timestamp is nanosec
+// 1 second is 1e9 nano seconds
 static uint64_t ssd_advance_status(struct ssd *ssd, struct ppa *ppa, struct
         nand_cmd *ncmd)
 {
@@ -721,6 +723,7 @@ static void mark_line_free(struct ssd *ssd, struct ppa *ppa)
     lm->free_line_cnt++;
 }
 
+// MARK:
 static int do_gc(struct ssd *ssd, bool force)
 {
     struct line *victim_line = NULL;
@@ -858,6 +861,40 @@ static uint64_t ssd_write(struct ssd *ssd, NvmeRequest *req)
     return maxlat;
 }
 
+static void do_statistics(struct ssd *ssd)
+{
+    struct ssdparams *spp = &ssd->sp;
+    struct nand_lun *lunp;
+    struct ppa ppa;
+    int ch, lun;
+    uint64_t sampling_interval = 1*1000000000LL;
+    uint64_t total_util = 0;
+    uint64_t now_time = qemu_clock_get_ns(QEMU_CLOCK_REALTIME);
+    // ppa.g.blk = victim_line->id;
+    // count the free lun of ssd
+    for (ch = 0; ch < spp->nchs; ch++) {
+        for (lun = 0; lun < spp->luns_per_ch; lun++) {
+            ppa.g.ch = ch;
+            ppa.g.lun = lun;
+            ppa.g.pl = 0;
+            lunp = get_lun(ssd, &ppa);
+            // calculate util time
+            if (lunp->next_lun_avail_time >= now_time) {
+                total_util += sampling_interval;
+                continue;
+            }
+            uint64_t desc = now_time - lunp->next_lun_avail_time;
+            if (desc >= sampling_interval) {
+                total_util += sampling_interval;
+            } else {
+                total_util += (sampling_interval - desc);
+            }
+        }
+    }
+
+    ftl_debug("%lf\n", double(total_util)/(spp->tt_luns*sampling_interval));
+}
+
 static void *ftl_thread(void *arg)
 {
     FemuCtrl *n = (FemuCtrl *)arg;
@@ -876,6 +913,9 @@ static void *ftl_thread(void *arg)
     ssd->to_poller = n->to_poller;
 
     while (1) {
+
+        do_statistics(ssd);
+
         for (i = 1; i <= n->num_poller; i++) {
             if (!ssd->to_ftl[i] || !femu_ring_count(ssd->to_ftl[i]))
                 continue;
@@ -893,6 +933,8 @@ static void *ftl_thread(void *arg)
             case NVME_CMD_READ:
                 lat = ssd_read(ssd, req);
                 break;
+			case NVME_CMD_UTIL:
+				break;
             case NVME_CMD_DSM:
                 lat = 0;
                 break;
