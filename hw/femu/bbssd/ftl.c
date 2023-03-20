@@ -790,9 +790,9 @@ static uint64_t ssd_read(struct ssd *ssd, NvmeRequest *req)
     for (lpn = start_lpn; lpn <= end_lpn; lpn++) {
         ppa = get_maptbl_ent(ssd, lpn);
         if (!mapped_ppa(&ppa) || !valid_ppa(ssd, &ppa)) {
-            //printf("%s,lpn(%" PRId64 ") not mapped to valid ppa\n", ssd->ssdname, lpn);
-            //printf("Invalid ppa,ch:%d,lun:%d,blk:%d,pl:%d,pg:%d,sec:%d\n",
-            //ppa.g.ch, ppa.g.lun, ppa.g.blk, ppa.g.pl, ppa.g.pg, ppa.g.sec);
+            printf("%s,lpn(%" PRId64 ") not mapped to valid ppa\n", ssd->ssdname, lpn);
+            printf("Invalid ppa,ch:%d,lun:%d,blk:%d,pl:%d,pg:%d,sec:%d\n",
+            ppa.g.ch, ppa.g.lun, ppa.g.blk, ppa.g.pl, ppa.g.pg, ppa.g.sec);
             continue;
         }
 
@@ -890,7 +890,7 @@ static void do_statistics(struct ssd *ssd)
                 total_util += sampling_interval;
                 continue;
             }
-            ftl_log("\nch:%d-lunp:%d\nlunp_nxt_avali_tm=%"PRIu64"\n", ch, lun, lunp->next_lun_avail_time);
+            // ftl_log("\nch:%d-lunp:%d\nlunp_nxt_avali_tm=%"PRIu64"\n", ch, lun, lunp->next_lun_avail_time);
             uint64_t desc = now_time - lunp->next_lun_avail_time;
             if (desc >= sampling_interval) {
                 continue;
