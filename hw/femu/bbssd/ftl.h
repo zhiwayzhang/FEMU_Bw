@@ -108,6 +108,7 @@ struct ssd_channel {
 };
 
 struct ssdparams {
+    int last_sampling_tm;
     int secsz;        /* sector size in bytes */
     int secs_per_pg;  /* # of sectors per page */
     int pgs_per_blk;  /* # of NAND pages per block */
