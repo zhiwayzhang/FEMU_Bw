@@ -371,6 +371,8 @@ void ssd_init(FemuCtrl *n)
     struct ssd *ssd = n->ssd;
     struct ssdparams *spp = &ssd->sp;
 
+    ssd->nand_utilization = 0.0;
+
     ftl_assert(ssd);
 
     ssd_init_params(spp);
@@ -937,21 +939,21 @@ static void *ftl_thread(void *arg)
         uint64_t now_time = qemu_clock_get_ns(QEMU_CLOCK_REALTIME);
         struct ssdparams *spp = &ssd->sp;
         if (now_time - spp->start_time >= sampling_interval) {
-
-            // calculate utilization
-            uint64_t utilization = spp->read_count*NAND_READ_LATENCY + \
-                                   spp->write_count*NAND_PROG_LATENCY + \
-                                   spp->erase_count*NAND_ERASE_LATENCY;
-
-            ftl_log("Read  Count: %"PRIu64"\n", spp->read_count);
-            ftl_log("Write Count: %"PRIu64"\n", spp->write_count);
-            ftl_log("Erase Count: %"PRIu64"\n", spp->erase_count);
-            ftl_log("Util       : %"PRIu64"\n", utilization);
-            ftl_log("\n%lf\n", utilization*1.0/(spp->tt_luns*sampling_interval));
             spp->read_count = 0;
             spp->write_count = 0;
             spp->erase_count = 0;
             spp->start_time = now_time;
+        } else {
+            // calculate utilization , **use ssd_utilization()**
+            uint64_t utilization = spp->read_count*NAND_READ_LATENCY + \
+                                   spp->write_count*NAND_PROG_LATENCY + \
+                                   spp->erase_count*NAND_ERASE_LATENCY;
+
+            // ftl_log("Read  Count: %"PRIu64"\n", spp->read_count);
+            // ftl_log("Write Count: %"PRIu64"\n", spp->write_count);
+            // ftl_log("Erase Count: %"PRIu64"\n", spp->erase_count);
+            // ftl_log("Util       : %"PRIu64"\n", utilization);
+            ssd->nand_utilization = utilization*1.0/(spp->tt_luns*sampling_interval);
         }
 
         for (i = 1; i <= n->num_poller; i++) {
@@ -971,8 +973,6 @@ static void *ftl_thread(void *arg)
             case NVME_CMD_READ:
                 lat = ssd_read(ssd, req);
                 break;
-			case NVME_CMD_UTIL:
-				break;
             case NVME_CMD_DSM:
                 lat = 0;
                 break;
