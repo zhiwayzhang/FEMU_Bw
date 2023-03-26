@@ -108,7 +108,11 @@ struct ssd_channel {
 };
 
 struct ssdparams {
-    int last_sampling_tm;
+    /* utilization */
+    uint64_t start_time; /* start time of analysis */
+    uint64_t write_count;  /* # of nand write op */
+    uint64_t read_count;   /* # of nand read op */
+    uint64_t erase_count;  /* # of nand erase op */
     int secsz;        /* sector size in bytes */
     int secs_per_pg;  /* # of sectors per page */
     int pgs_per_blk;  /* # of NAND pages per block */
