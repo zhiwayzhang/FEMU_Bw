@@ -66,7 +66,12 @@ static void bb_flip(FemuCtrl *n, NvmeCmd *cmd)
         femu_log("%s,Log print [Disabled]!\n", n->devname);
         break;
     case FEMU_UTILIZATION:
-        femu_log("%lf\n", ssd->nand_utilization);
+        printf("utilization = %lf\n", ssd->nand_utilization);
+        break;
+    case FEMU_UTILIZATION_REPORT:
+        printf("total_utilization = %lf\nhost_utilization = %lf\ngc_utilization = %lf\nt_r=%lu t_w=%lu t_gc_e=%lu\ngc_r=%lu gc_w=%lu gc_e=%lu\n", ssd->nand_utilization, ssd->host_nand_utilization,ssd->gc_nand_utilization,
+                ssd->read_count, ssd->write_count, ssd->erase_count,
+                ssd->gc_read_count, ssd->gc_write_count, ssd->gc_erase_count);
         break;
     default:
         printf("FEMU:%s,Not implemented flip cmd (%lu)\n", n->devname, cdw10);

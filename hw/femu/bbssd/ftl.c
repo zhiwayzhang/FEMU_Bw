@@ -237,11 +237,6 @@ static void check_params(struct ssdparams *spp)
 // INIT: SSD params
 static void ssd_init_params(struct ssdparams *spp)
 {
-    spp->start_time = qemu_clock_get_ns(QEMU_CLOCK_REALTIME);
-    spp->read_count = 0;
-    spp->write_count = 0;
-    spp->erase_count = 0;
-
     spp->secsz = 512;
     spp->secs_per_pg = 8;
     spp->pgs_per_blk = 256;
@@ -371,7 +366,14 @@ void ssd_init(FemuCtrl *n)
     struct ssd *ssd = n->ssd;
     struct ssdparams *spp = &ssd->sp;
 
-    ssd->nand_utilization = 0.0;
+    ssd->nand_utilization = 0;
+    ssd->gc_nand_utilization = 0;
+    ssd->host_nand_utilization = 0;
+
+    ssd->start_time = qemu_clock_get_ns(QEMU_CLOCK_REALTIME);
+    ssd->read_count = 0;
+    ssd->write_count = 0;
+    ssd->erase_count = 0;
 
     ftl_assert(ssd);
 
@@ -477,7 +479,7 @@ static uint64_t ssd_advance_status(struct ssd *ssd, struct ppa *ppa, struct
     switch (c) {
     case NAND_READ:
         /* read: perform NAND cmd first */
-        spp->read_count++;
+        ssd->read_count++;
         nand_stime = (lun->next_lun_avail_time < cmd_stime) ? cmd_stime : \
                      lun->next_lun_avail_time;
         lun->next_lun_avail_time = nand_stime + spp->pg_rd_lat;
@@ -495,7 +497,7 @@ static uint64_t ssd_advance_status(struct ssd *ssd, struct ppa *ppa, struct
         break;
 
     case NAND_WRITE:
-        spp->write_count++;
+        ssd->write_count++;
         /* write: transfer data through channel first */
         nand_stime = (lun->next_lun_avail_time < cmd_stime) ? cmd_stime : \
                      lun->next_lun_avail_time;
@@ -522,7 +524,7 @@ static uint64_t ssd_advance_status(struct ssd *ssd, struct ppa *ppa, struct
 
     case NAND_ERASE:
         /* erase: only need to advance NAND status */
-        spp->erase_count++;
+        ssd->erase_count++;
         nand_stime = (lun->next_lun_avail_time < cmd_stime) ? cmd_stime : \
                      lun->next_lun_avail_time;
         lun->next_lun_avail_time = nand_stime + spp->blk_er_lat;
@@ -532,6 +534,12 @@ static uint64_t ssd_advance_status(struct ssd *ssd, struct ppa *ppa, struct
 
     default:
         ftl_err("Unsupported NAND command: 0x%x\n", c);
+    }
+
+    if (ncmd->type == GC_IO) {
+        ssd->gc_read_count += (c == NAND_READ);
+        ssd->gc_write_count += (c == NAND_WRITE);
+        ssd->gc_erase_count += (c == NAND_ERASE);
     }
 
     return lat;
@@ -931,29 +939,32 @@ static void *ftl_thread(void *arg)
     ssd->to_poller = n->to_poller;
 
     // uint64_t now_time = ;
-    uint64_t sampling_interval = 5*1000000000LL;
+    uint64_t sampling_interval = 1*1000000000LL;
 
     while (1) {
 
         // check timestamp && reset counter
         uint64_t now_time = qemu_clock_get_ns(QEMU_CLOCK_REALTIME);
-        struct ssdparams *spp = &ssd->sp;
-        if (now_time - spp->start_time >= sampling_interval) {
-            spp->read_count = 0;
-            spp->write_count = 0;
-            spp->erase_count = 0;
-            spp->start_time = now_time;
+        if (now_time - ssd->start_time >= sampling_interval) {
+            ssd->read_count = 0;
+            ssd->write_count = 0;
+            ssd->erase_count = 0;
+            ssd->gc_read_count = 0;
+            ssd->gc_write_count = 0;
+            ssd->gc_erase_count = 0;
+            ssd->start_time = now_time;
         } else {
             // calculate utilization , **use ssd_utilization()**
-            uint64_t utilization = spp->read_count*NAND_READ_LATENCY + \
-                                   spp->write_count*NAND_PROG_LATENCY + \
-                                   spp->erase_count*NAND_ERASE_LATENCY;
+            uint64_t utilization = ssd->read_count*(uint64_t)NAND_READ_LATENCY + \
+                                   ssd->write_count*(uint64_t)NAND_PROG_LATENCY + \
+                                   ssd->erase_count*(uint64_t)NAND_ERASE_LATENCY;
+            uint64_t gc_utilization = ssd->gc_read_count*(uint64_t)NAND_READ_LATENCY + \
+                                   ssd->gc_write_count*(uint64_t)NAND_PROG_LATENCY + \
+                                   ssd->gc_erase_count*(uint64_t)NAND_ERASE_LATENCY;
 
-            // ftl_log("Read  Count: %"PRIu64"\n", spp->read_count);
-            // ftl_log("Write Count: %"PRIu64"\n", spp->write_count);
-            // ftl_log("Erase Count: %"PRIu64"\n", spp->erase_count);
-            // ftl_log("Util       : %"PRIu64"\n", utilization);
-            ssd->nand_utilization = utilization*1.0/(spp->tt_luns*sampling_interval);
+            ssd->nand_utilization = utilization*1.0/(ssd->sp.tt_luns*sampling_interval);
+            ssd->gc_nand_utilization = gc_utilization*1.0/(ssd->sp.tt_luns*sampling_interval);
+            ssd->host_nand_utilization = ssd->nand_utilization - ssd->gc_nand_utilization;
         }
 
         for (i = 1; i <= n->num_poller; i++) {

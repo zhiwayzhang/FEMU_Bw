@@ -44,6 +44,7 @@ enum {
     FEMU_DISABLE_LOG = 7,
 
     FEMU_UTILIZATION = 8,
+    FEMU_UTILIZATION_REPORT = 9,
 };
 
 
@@ -110,11 +111,7 @@ struct ssd_channel {
 };
 
 struct ssdparams {
-    /* utilization */
-    uint64_t start_time; /* start time of analysis */
-    uint64_t write_count;  /* # of nand write op */
-    uint64_t read_count;   /* # of nand read op */
-    uint64_t erase_count;  /* # of nand erase op */
+
     int secsz;        /* sector size in bytes */
     int secs_per_pg;  /* # of sectors per page */
     int pgs_per_blk;  /* # of NAND pages per block */
@@ -210,6 +207,16 @@ struct ssd {
     struct write_pointer wp;
     struct line_mgmt lm;
     double nand_utilization;
+    double gc_nand_utilization;
+    double host_nand_utilization;
+    /* utilization */
+    uint64_t start_time; /* start time of analysis */
+    uint64_t write_count;  /* # of nand write op */
+    uint64_t read_count;   /* # of nand read op */
+    uint64_t erase_count;  /* # of nand erase op */
+    uint64_t gc_write_count;
+    uint64_t gc_read_count;
+    uint64_t gc_erase_count;
 
     /* lockless ring for communication with NVMe IO thread */
     struct rte_ring **to_ftl;
