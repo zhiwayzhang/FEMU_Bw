@@ -1,4 +1,5 @@
 #include "./nvme.h"
+#include "./bbssd/ftl.h"
 
 #define NVME_IDENTIFY_DATA_SIZE 4096
 
@@ -545,6 +546,26 @@ static uint16_t nvme_identify(FemuCtrl *n, NvmeCmd *cmd)
     }
 }
 
+static uint16_t nvme_util_log(FemuCtrl *n, NvmeCmd *cmd, NvmeCqe *cqe)
+{
+    uint32_t cdw10 = le32_to_cpu(cmd->cdw10);
+    switch (cdw10) {
+        case NVME_TOTAL_UTIL:
+            // double nand_util_d = n->ssd->nand_utilization;
+            // double gc_nand_util_d = n->ssd->gc_nand_utilization;
+            // printf("nand_util = %lf\ngc_nand_util=%lf\n", nand_util_d, gc_nand_util_d);
+            // 1.2222
+            int nand_util = n->ssd->nand_utilization * 10000;
+            int gc_util = n->ssd->gc_nand_utilization * 10000;
+            // printf("nand_util_hx = %d\ngc_nand_util_hx=%d\nresult=%d\n", nand_util, gc_util, nand_util+gc_util);
+            cqe->n.result = cpu_to_le32(nand_util*10000+gc_util);
+            break;
+        default:
+            return NVME_INVALID_FIELD;
+    }
+    return NVME_SUCCESS;
+}
+
 static uint16_t nvme_get_feature(FemuCtrl *n, NvmeCmd *cmd, NvmeCqe *cqe)
 {
     NvmeRangeType *rt;
@@ -1004,6 +1025,8 @@ static uint16_t nvme_admin_cmd(FemuCtrl *n, NvmeCmd *cmd, NvmeCqe *cqe)
     case NVME_ADM_CMD_SECURITY_SEND:
     case NVME_ADM_CMD_SECURITY_RECV:
         return NVME_INVALID_OPCODE | NVME_DNR;
+    case NVME_AMD_CMD_GET_UTIL_LOG:
+        return nvme_util_log(n, cmd, cqe);
     default:
         if (n->ext_ops.admin_cmd) {
             return n->ext_ops.admin_cmd(n, cmd);

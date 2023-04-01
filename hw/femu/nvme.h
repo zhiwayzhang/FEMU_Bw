@@ -313,6 +313,7 @@ enum NvmeAdminCommands {
     NVME_ADM_CMD_DELETE_SQ      = 0x00,
     NVME_ADM_CMD_CREATE_SQ      = 0x01,
     NVME_ADM_CMD_GET_LOG_PAGE   = 0x02,
+    NVME_AMD_CMD_GET_UTIL_LOG   = 0x03,
     NVME_ADM_CMD_DELETE_CQ      = 0x04,
     NVME_ADM_CMD_CREATE_CQ      = 0x05,
     NVME_ADM_CMD_IDENTIFY       = 0x06,
@@ -334,7 +335,7 @@ enum NvmeIoCommands {
     NVME_CMD_FLUSH              = 0x00,
     NVME_CMD_WRITE              = 0x01,
     NVME_CMD_READ               = 0x02,
-	NVME_CMD_UTIL				= 0x03,
+	//NVME_CMD_UTIL				= 0x03,
     NVME_CMD_WRITE_UNCOR        = 0x04,
     NVME_CMD_COMPARE            = 0x05,
     NVME_CMD_WRITE_ZEROES       = 0x08,
@@ -807,6 +808,10 @@ typedef struct NvmeFeatureVal {
 #define NVME_INTC_TIME(intc)    ((intc >> 8) & 0xff)
 
 #define NVME_ERR_REC_DULBE(err_rec) (err_rec & 0x10000)
+
+enum NvmeUtilLogIds {
+    NVME_TOTAL_UTIL = 0x1,
+};
 
 enum NvmeFeatureIds {
     NVME_ARBITRATION                = 0x1,
