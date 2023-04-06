@@ -1,4 +1,4 @@
-# IO Scheduling
+# FEMU with Bandwidth Report
 
 # Notes
 
@@ -38,7 +38,7 @@ using nvme-cli get the NVMe Admin Command Result
 ```shell
 echo $((0x$(echo $(sudo nvme admin-passthru /dev/nvme0n1 --opcode=0x03 --cdw10=1 2>&1) | cut -d ":" -f 2)))
 ```
-<details open>
+<details>
 <summary>click to show the explain of the command above</summary>
 nvme-cli execute command and output nvme result as stderr output
 
