@@ -555,6 +555,17 @@ static uint16_t nvme_util_log(FemuCtrl *n, NvmeCmd *cmd, NvmeCqe *cqe)
             // double gc_nand_util_d = n->ssd->gc_nand_utilization;
             // printf("nand_util = %lf\ngc_nand_util=%lf\n", nand_util_d, gc_nand_util_d);
             // 1.2222
+            // calculate utilization , **use ssd_utilization()**
+            uint64_t utilization = n->ssd->read_count*(uint64_t)NAND_READ_LATENCY + \
+                                    n->ssd->write_count*(uint64_t)NAND_PROG_LATENCY + \
+                                    n->ssd->erase_count*(uint64_t)NAND_ERASE_LATENCY;
+            uint64_t gc_utilization = n->ssd->gc_read_count*(uint64_t)NAND_READ_LATENCY + \
+                                    n->ssd->gc_write_count*(uint64_t)NAND_PROG_LATENCY + \
+                                    n->ssd->gc_erase_count*(uint64_t)NAND_ERASE_LATENCY;
+
+            n->ssd->nand_utilization = utilization*1.0/(n->ssd->sp.tt_luns*n->ssd->sampling_interval);
+            n->ssd->gc_nand_utilization = gc_utilization*1.0/(n->ssd->sp.tt_luns*n->ssd->sampling_interval);
+            // n->ssd->host_nand_utilization = n->ssd->nand_utilization - n->ssd->gc_nand_utilization;
             int nand_util = n->ssd->nand_utilization * 10000;
             int gc_util = n->ssd->gc_nand_utilization * 10000;
             // printf("nand_util_hx = %d\ngc_nand_util_hx=%d\nresult=%d\n", nand_util, gc_util, nand_util+gc_util);
