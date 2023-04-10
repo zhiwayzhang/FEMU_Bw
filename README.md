@@ -4,7 +4,7 @@
 
 ## FEMU SSD init
 
-use `mount.sh` mount femu to kernel
+using `mount.sh` mount femu to kernel
 ```shell
 sudo mkdir /tmp/test && sudo mkfs.ext4 /dev/nvme0n1 && sudo mount /dev/nvme0n1 /tmp/test
 ```
@@ -12,7 +12,7 @@ sudo mkdir /tmp/test && sudo mkfs.ext4 /dev/nvme0n1 && sudo mount /dev/nvme0n1 /
 ## Generate IO traffic for testing
 
 ### dd
-use `traffic.sh` generate backgroud traffic in `nvme0n1`
+using `traffic.sh` generate backgroud traffic in `nvme0n1`
 
 ```shell
 while true
@@ -26,7 +26,24 @@ run `traffic.sh` in background
 nohup sudo sh traffic.sh > traffic.log 2>&1 &
 ```
 ### fio
-TODO
+using fio to test the performance of FEMU bbssd
+
+```
+[global]
+ioengine=libaio
+direct=1
+time_based=1
+runtime=350s
+rw=randrw
+bs=1M
+numjobs=8
+iodepth=64
+size=1000M
+group_reporting
+
+[job1]
+directory=/tmp/test
+```
 
 ## Execute Nvme admin command in user level
 using nvme-cli get the NAND utilization of femu bbssd, this command will be processed by `bb_flip` in `hw/femu/bbssd/bb.c`, but it's output as QEMU log, can't be access by VM.

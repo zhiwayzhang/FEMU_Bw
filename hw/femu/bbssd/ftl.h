@@ -211,6 +211,8 @@ struct ssd {
     double host_nand_utilization;
     /* utilization */
     uint64_t start_time; /* start time of analysis */
+    uint64_t sampling_interval;
+    uint64_t statistic_end_time;
     uint64_t write_count;  /* # of nand write op */
     uint64_t read_count;   /* # of nand read op */
     uint64_t erase_count;  /* # of nand erase op */
