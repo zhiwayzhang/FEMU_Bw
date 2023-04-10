@@ -93,8 +93,8 @@ static void ssd_init_lines(struct ssd *ssd)
 
     QTAILQ_INIT(&lm->free_line_list);
     lm->victim_line_pq = pqueue_init(spp->tt_lines, victim_line_cmp_pri,
-            victim_line_get_pri, victim_line_set_pri,
-            victim_line_get_pos, victim_line_set_pos);
+                                     victim_line_get_pri, victim_line_set_pri,
+                                     victim_line_get_pos, victim_line_set_pos);
     QTAILQ_INIT(&lm->full_line_list);
 
     lm->free_line_cnt = 0;
@@ -413,8 +413,8 @@ static inline bool valid_ppa(struct ssd *ssd, struct ppa *ppa)
     int sec = ppa->g.sec;
 
     if (ch >= 0 && ch < spp->nchs && lun >= 0 && lun < spp->luns_per_ch && pl >=
-        0 && pl < spp->pls_per_lun && blk >= 0 && blk < spp->blks_per_pl && pg
-        >= 0 && pg < spp->pgs_per_blk && sec >= 0 && sec < spp->secs_per_pg)
+            0 && pl < spp->pls_per_lun && blk >= 0 && blk < spp->blks_per_pl && pg
+            >= 0 && pg < spp->pgs_per_blk && sec >= 0 && sec < spp->secs_per_pg)
         return true;
 
     return false;
@@ -467,11 +467,11 @@ static inline struct nand_page *get_pg(struct ssd *ssd, struct ppa *ppa)
 // timestamp is nanosec
 // 1 second is 1e9 nano seconds
 static uint64_t ssd_advance_status(struct ssd *ssd, struct ppa *ppa, struct
-        nand_cmd *ncmd)
+                                   nand_cmd *ncmd)
 {
     int c = ncmd->cmd;
     uint64_t cmd_stime = (ncmd->stime == 0) ? \
-        qemu_clock_get_ns(QEMU_CLOCK_REALTIME) : ncmd->stime;
+                         qemu_clock_get_ns(QEMU_CLOCK_REALTIME) : ncmd->stime;
     uint64_t nand_stime;
     struct ssdparams *spp = &ssd->sp;
     struct nand_lun *lun = get_lun(ssd, ppa);
@@ -490,7 +490,7 @@ static uint64_t ssd_advance_status(struct ssd *ssd, struct ppa *ppa, struct
 
         /* read: then data transfer through channel */
         chnl_stime = (ch->next_ch_avail_time < lun->next_lun_avail_time) ? \
-            lun->next_lun_avail_time : ch->next_ch_avail_time;
+                     lun->next_lun_avail_time : ch->next_ch_avail_time;
         ch->next_ch_avail_time = chnl_stime + spp->ch_xfer_lat;
 
         lat = ch->next_ch_avail_time - cmd_stime;
@@ -516,7 +516,7 @@ static uint64_t ssd_advance_status(struct ssd *ssd, struct ppa *ppa, struct
 
         /* write: then do NAND program */
         nand_stime = (lun->next_lun_avail_time < ch->next_ch_avail_time) ? \
-            ch->next_ch_avail_time : lun->next_lun_avail_time;
+                     ch->next_ch_avail_time : lun->next_lun_avail_time;
         lun->next_lun_avail_time = nand_stime + spp->pg_wr_lat;
 
         lat = lun->next_lun_avail_time - cmd_stime;
@@ -895,43 +895,43 @@ static uint64_t ssd_write(struct ssd *ssd, NvmeRequest *req)
 
 // static void do_statistics(struct ssd *ssd)
 // {
-    // uint64_t now_time = qemu_clock_get_ns(QEMU_CLOCK_REALTIME);
-    // uint64_t sampling_interval = 1*1000000000LL;
-    // struct ssdparams *spp = &ssd->sp;
-    // if (now_time - spp->last_sampling_tm < 10*sampling_interval) {
-    //     return ;
-    // }
-    // femu_log("\ndo_statistics\n");
-    // ftl_log("\nnow_time=%"PRIu64"\n", now_time);
-    // spp->last_sampling_tm = now_time;
-    // struct nand_lun *lunp;
-    // struct ppa ppa;
-    // int ch, lun;
-    // uint64_t total_util = 0;
-    // // ppa.g.blk = victim_line->id;
-    // // count the free lun of ssd
-    // for (ch = 0; ch < spp->nchs; ch++) {
-    //     for (lun = 0; lun < spp->luns_per_ch; lun++) {
-    //         ppa.g.ch = ch;
-    //         ppa.g.lun = lun;
-    //         ppa.g.pl = 0;
-    //         lunp = get_lun(ssd, &ppa);
-    //         // calculate util time
-    //         if (lunp->next_lun_avail_time >= now_time) {
-    //             total_util += sampling_interval;
-    //             continue;
-    //         }
-    //         // ftl_log("\nch:%d-lunp:%d\nlunp_nxt_avali_tm=%"PRIu64"\n", ch, lun, lunp->next_lun_avail_time);
-    //         uint64_t desc = now_time - lunp->next_lun_avail_time;
-    //         if (desc >= sampling_interval) {
-    //             continue;
-    //         } else {
-    //             total_util += (sampling_interval - desc);
-    //         }
-    //     }
-    // }
-    // ftl_log("\ntotal_util=%"PRIu64"\ndivide_by=%d\n", total_util/sampling_interval, spp->tt_luns);
-    // ftl_log("\n%lf\n", total_util*1.0/(spp->tt_luns*sampling_interval));
+// uint64_t now_time = qemu_clock_get_ns(QEMU_CLOCK_REALTIME);
+// uint64_t sampling_interval = 1*1000000000LL;
+// struct ssdparams *spp = &ssd->sp;
+// if (now_time - spp->last_sampling_tm < 10*sampling_interval) {
+//     return ;
+// }
+// femu_log("\ndo_statistics\n");
+// ftl_log("\nnow_time=%"PRIu64"\n", now_time);
+// spp->last_sampling_tm = now_time;
+// struct nand_lun *lunp;
+// struct ppa ppa;
+// int ch, lun;
+// uint64_t total_util = 0;
+// // ppa.g.blk = victim_line->id;
+// // count the free lun of ssd
+// for (ch = 0; ch < spp->nchs; ch++) {
+//     for (lun = 0; lun < spp->luns_per_ch; lun++) {
+//         ppa.g.ch = ch;
+//         ppa.g.lun = lun;
+//         ppa.g.pl = 0;
+//         lunp = get_lun(ssd, &ppa);
+//         // calculate util time
+//         if (lunp->next_lun_avail_time >= now_time) {
+//             total_util += sampling_interval;
+//             continue;
+//         }
+//         // ftl_log("\nch:%d-lunp:%d\nlunp_nxt_avali_tm=%"PRIu64"\n", ch, lun, lunp->next_lun_avail_time);
+//         uint64_t desc = now_time - lunp->next_lun_avail_time;
+//         if (desc >= sampling_interval) {
+//             continue;
+//         } else {
+//             total_util += (sampling_interval - desc);
+//         }
+//     }
+// }
+// ftl_log("\ntotal_util=%"PRIu64"\ndivide_by=%d\n", total_util/sampling_interval, spp->tt_luns);
+// ftl_log("\n%lf\n", total_util*1.0/(spp->tt_luns*sampling_interval));
 // }
 
 static void *ftl_thread(void *arg)

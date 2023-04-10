@@ -59,12 +59,18 @@ enum {
 struct ppa {
     union {
         struct {
-            uint64_t blk : BLK_BITS;
-            uint64_t pg  : PG_BITS;
-            uint64_t sec : SEC_BITS;
-            uint64_t pl  : PL_BITS;
-            uint64_t lun : LUN_BITS;
-            uint64_t ch  : CH_BITS;
+uint64_t blk :
+            BLK_BITS;
+uint64_t pg  :
+            PG_BITS;
+uint64_t sec :
+            SEC_BITS;
+uint64_t pl  :
+            PL_BITS;
+uint64_t lun :
+            LUN_BITS;
+uint64_t ch  :
+            CH_BITS;
             uint64_t rsv : 1;
         } g;
 
