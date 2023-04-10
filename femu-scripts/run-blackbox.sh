@@ -29,4 +29,5 @@ sudo x86_64-softmmu/qemu-system-x86_64 \
     -net user,hostfwd=tcp::8080-:22 \
     -net nic,model=virtio \
     -nographic \
+    -serial mon:stdio \
     -qmp unix:./qmp-sock,server,nowait 2>&1 | tee log
