@@ -243,7 +243,7 @@ static void ssd_init_params(struct ssdparams *spp)
     spp->blks_per_pl = 256; /* 16GB */
     spp->pls_per_lun = 1;
     spp->luns_per_ch = 8;
-    spp->nchs = 8;
+    spp->nchs = 2;
 
     spp->pg_rd_lat = NAND_READ_LATENCY;
     spp->pg_wr_lat = NAND_PROG_LATENCY;
@@ -277,7 +277,7 @@ static void ssd_init_params(struct ssdparams *spp)
     spp->secs_per_line = spp->pgs_per_line * spp->secs_per_pg;
     spp->tt_lines = spp->blks_per_lun; /* TODO: to fix under multiplanes */
 
-    spp->gc_thres_pcent = 0.75;
+    spp->gc_thres_pcent = 0.85;
     spp->gc_thres_lines = (int)((1 - spp->gc_thres_pcent) * spp->tt_lines);
     spp->gc_thres_pcent_high = 0.95;
     spp->gc_thres_lines_high = (int)((1 - spp->gc_thres_pcent_high) * spp->tt_lines);
@@ -370,8 +370,8 @@ void ssd_init(FemuCtrl *n)
     ssd->gc_nand_utilization = 0;
     ssd->host_nand_utilization = 0;
 
+    ssd->sampling_interval = 1*1000000000LL;
     ssd->statistic_end_time = qemu_clock_get_ns(QEMU_CLOCK_REALTIME) + ssd->sampling_interval;
-    ssd->sampling_interval = 3*1000000000LL;
     ssd->read_count = 0;
     ssd->write_count = 0;
     ssd->erase_count = 0;
