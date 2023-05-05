@@ -206,9 +206,13 @@ struct ssd {
     uint64_t *rmap;     /* reverse mapptbl, assume it's stored in OOB */
     struct write_pointer wp;
     struct line_mgmt lm;
+    // double overflow;
     double nand_utilization;
     double gc_nand_utilization;
     double host_nand_utilization;
+    double nand_utilization_pre;
+    double gc_nand_utilization_pre;
+    double host_nand_utilization_pre;
     /* utilization */
     uint64_t start_time; /* start time of analysis */
     uint64_t sampling_interval;

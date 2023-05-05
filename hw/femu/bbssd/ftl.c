@@ -369,12 +369,18 @@ void ssd_init(FemuCtrl *n)
     ssd->nand_utilization = 0;
     ssd->gc_nand_utilization = 0;
     ssd->host_nand_utilization = 0;
+    ssd->nand_utilization_pre = 0;
+    ssd->gc_nand_utilization_pre = 0;
+    ssd->host_nand_utilization_pre = 0;
 
-    ssd->sampling_interval = 1*1000000000LL;
+    ssd->sampling_interval = 5*1000000000LL;
     ssd->statistic_end_time = qemu_clock_get_ns(QEMU_CLOCK_REALTIME) + ssd->sampling_interval;
     ssd->read_count = 0;
     ssd->write_count = 0;
     ssd->erase_count = 0;
+    ssd->gc_read_count = 0;
+    ssd->gc_write_count = 0;
+    ssd->gc_erase_count = 0;
 
     ftl_assert(ssd);
 
@@ -536,17 +542,6 @@ static uint64_t ssd_advance_status(struct ssd *ssd, struct ppa *ppa, struct
     default:
         nand_stime = qemu_clock_get_ns(QEMU_CLOCK_REALTIME);
         ftl_err("Unsupported NAND command: 0x%x\n", c);
-    }
-
-    // check timestamp && reset counter
-    if (nand_stime > ssd->statistic_end_time) {
-        ssd->read_count = 0;
-        ssd->write_count = 0;
-        ssd->erase_count = 0;
-        ssd->gc_read_count = 0;
-        ssd->gc_write_count = 0;
-        ssd->gc_erase_count = 0;
-        ssd->statistic_end_time = nand_stime + ssd->sampling_interval;
     }
 
     if (ncmd->type == GC_IO) {
@@ -939,6 +934,7 @@ static void *ftl_thread(void *arg)
     FemuCtrl *n = (FemuCtrl *)arg;
     struct ssd *ssd = n->ssd;
     NvmeRequest *req = NULL;
+    uint64_t now_time = 0;
     uint64_t lat = 0;
     int rc;
     int i;
@@ -952,6 +948,31 @@ static void *ftl_thread(void *arg)
     ssd->to_poller = n->to_poller;
 
     while (1) {
+        now_time = qemu_clock_get_ns(QEMU_CLOCK_REALTIME);
+        // check timestamp && reset counter
+        if (now_time > ssd->statistic_end_time) {
+            uint64_t utilization = ssd->read_count*(uint64_t)NAND_READ_LATENCY + \
+                                    ssd->write_count*(uint64_t)NAND_PROG_LATENCY + \
+                                    ssd->erase_count*(uint64_t)NAND_ERASE_LATENCY;
+            uint64_t gc_utilization = ssd->gc_read_count*(uint64_t)NAND_READ_LATENCY + \
+                                    ssd->gc_write_count*(uint64_t)NAND_PROG_LATENCY + \
+                                    ssd->gc_erase_count*(uint64_t)NAND_ERASE_LATENCY;
+            ssd->read_count = 0;
+            ssd->write_count = 0;
+            ssd->erase_count = 0;
+            ssd->gc_read_count = 0;
+            ssd->gc_write_count = 0;
+            ssd->gc_erase_count = 0;
+            ssd->statistic_end_time = now_time + ssd->sampling_interval;
+            ftl_log("real_util_pre = %lf\n", utilization*1.0/(ssd->sp.tt_luns*ssd->sampling_interval));
+            ssd->nand_utilization_pre = utilization*1.0/(ssd->sp.tt_luns*ssd->sampling_interval) > 1 ? 1 : utilization*1.0/(ssd->sp.tt_luns*ssd->sampling_interval);
+            ssd->gc_nand_utilization_pre = gc_utilization*1.0/(ssd->sp.tt_luns*ssd->sampling_interval) > 1 ? 1 : gc_utilization*1.0/(ssd->sp.tt_luns*ssd->sampling_interval);
+            ssd->gc_nand_utilization = 0;
+            ssd->nand_utilization = 0;
+            ftl_log("end_time = %lu\n", ssd->statistic_end_time);
+            ftl_log("now_time = %lu\n", now_time);
+            ftl_log("util_pre = %lf   gc_pre = %lf\n", ssd->nand_utilization_pre, ssd->gc_nand_utilization_pre);
+        }
 
         for (i = 1; i <= n->num_poller; i++) {
             if (!ssd->to_ftl[i] || !femu_ring_count(ssd->to_ftl[i]))

@@ -551,24 +551,26 @@ static uint16_t nvme_util_log(FemuCtrl *n, NvmeCmd *cmd, NvmeCqe *cqe)
     uint32_t cdw10 = le32_to_cpu(cmd->cdw10);
     switch (cdw10) {
         case NVME_TOTAL_UTIL:
-            // double nand_util_d = n->ssd->nand_utilization;
-            // double gc_nand_util_d = n->ssd->gc_nand_utilization;
-            // printf("nand_util = %lf\ngc_nand_util=%lf\n", nand_util_d, gc_nand_util_d);
-            // 1.2222
             // calculate utilization , **use ssd_utilization()**
+            uint64_t nvme_time = qemu_clock_get_ns(QEMU_CLOCK_REALTIME);
             uint64_t utilization = n->ssd->read_count*(uint64_t)NAND_READ_LATENCY + \
                                     n->ssd->write_count*(uint64_t)NAND_PROG_LATENCY + \
                                     n->ssd->erase_count*(uint64_t)NAND_ERASE_LATENCY;
             uint64_t gc_utilization = n->ssd->gc_read_count*(uint64_t)NAND_READ_LATENCY + \
                                     n->ssd->gc_write_count*(uint64_t)NAND_PROG_LATENCY + \
                                     n->ssd->gc_erase_count*(uint64_t)NAND_ERASE_LATENCY;
-
-            n->ssd->nand_utilization = utilization*1.0/(n->ssd->sp.tt_luns*n->ssd->sampling_interval);
-            n->ssd->gc_nand_utilization = gc_utilization*1.0/(n->ssd->sp.tt_luns*n->ssd->sampling_interval);
-            // n->ssd->host_nand_utilization = n->ssd->nand_utilization - n->ssd->gc_nand_utilization;
+            
+            double pre_ratio = (1.0*n->ssd->statistic_end_time - 1.0*nvme_time)/n->ssd->sampling_interval;
+            if (pre_ratio < 0) pre_ratio = 0;
+            n->ssd->nand_utilization = utilization*1.0/(n->ssd->sp.tt_luns*n->ssd->sampling_interval)*(1-pre_ratio)+pre_ratio*n->ssd->nand_utilization_pre;
+            n->ssd->gc_nand_utilization = gc_utilization*1.0/(n->ssd->sp.tt_luns*n->ssd->sampling_interval)*(1-pre_ratio)+pre_ratio*n->ssd->gc_nand_utilization_pre;
+            printf("[NVME] end_time = %lu \n", n->ssd->statistic_end_time);
+            printf("[NVME] nvme_time = %lu \n", nvme_time);
+            printf("[NVME] pre_ratio = %lf\n", pre_ratio);
+            printf("[NVME] util_report = %lf   gc_report = %lf\n", n->ssd->nand_utilization, n->ssd->gc_nand_utilization);
+            printf("[NVME] util_pre = %lf   gc_pre = %lf\n", n->ssd->nand_utilization_pre, n->ssd->gc_nand_utilization_pre);
             int nand_util = n->ssd->nand_utilization * 10000;
             int gc_util = n->ssd->gc_nand_utilization * 10000;
-            // printf("nand_util_hx = %d\ngc_nand_util_hx=%d\nresult=%d\n", nand_util, gc_util, nand_util+gc_util);
             cqe->n.result = cpu_to_le32(nand_util*10000+gc_util);
             break;
         default:
